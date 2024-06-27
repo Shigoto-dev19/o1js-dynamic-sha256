@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { Bytes, Field, Gadgets } from 'o1js';
-import { dynamicSha256, partialSHA256 } from './dynamic-sha256.js';
+import { dynamicSHA256, partialSHA256 } from './dynamic-sha256.js';
 import { dynamicSHA256Pad, generatePartialSHA256Inputs } from './helpers.js';
 import { generateEmailVerifierInputs } from '@zk-email/helpers';
 import {
@@ -42,7 +42,7 @@ describe('Testing Dynamic SHA-256', () => {
     paddingSize?: number,
     preimageBytes?: Uint8Array,
     max = 1000,
-    hashValueIndex?: number
+    falseDigestIndex=false
   ) {
     // Generate random bytes if preimageBytes is not provided
     const randomSize = Math.floor(Math.random() * max);
@@ -76,12 +76,12 @@ describe('Testing Dynamic SHA-256', () => {
 
     // Set the digest index
     let digestIndex = preimageLength;
-    if (hashValueIndex) {
-      digestIndex = Field(hashValueIndex);
+    if (falseDigestIndex) {
+      digestIndex = Field.random();
     }
 
     // Compute the dynamic SHA-256 digest
-    const dynamicDigest = dynamicSha256(paddedPreimage, digestIndex).toHex();
+    const dynamicDigest = dynamicSHA256(paddedPreimage, digestIndex).toHex();
 
     // Compute the standard SHA-256 digest
     const digest = Gadgets.SHA256.hash(inputBytes).toHex();
@@ -150,7 +150,7 @@ describe('Testing Dynamic SHA-256', () => {
 
   it('should throw given an incorrect padded preimage index', () => {
     // Expect an error when given an incorrect hash value index
-    expect(() => testDynamicSHA256(1024, undefined, 10000, 123)).toThrow();
+    expect(() => testDynamicSHA256(1024, undefined, 10000, true)).toThrow();
   });
 });
 
@@ -262,7 +262,7 @@ describe('Testing Dynamic & Partial SHA-256 on Email Verification', () => {
       header.toBytes(),
       1024
     );
-    const headerDynamicHash = dynamicSha256(
+    const headerDynamicHash = dynamicSHA256(
       paddedHeader,
       headerHashIndex
     ).toHex();
@@ -275,7 +275,7 @@ describe('Testing Dynamic & Partial SHA-256 on Email Verification', () => {
     const headerHashIndex = Field(
       Number(emailInputs.emailHeaderLength) / 8 - 8
     );
-    const headerDynamicHash = dynamicSha256(
+    const headerDynamicHash = dynamicSHA256(
       paddedHeader,
       headerHashIndex
     ).toHex();
