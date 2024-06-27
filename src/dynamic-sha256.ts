@@ -2,9 +2,9 @@
 import { SHA256 } from './sha256/sha256.js';
 import { bytesToWords, wordToBytes } from './sha256/utils.js';
 import { Bytes, Field, UInt32 } from 'o1js';
-import { selectSubarray, toMessageBlocks, wordAtIndex } from './utils.js';
+import { toMessageBlocks, wordAtIndex } from './utils.js';
 
-export { dynamicSHA2562, dynamicSHA256, partialSHA256 };
+export { dynamicSHA256, partialSHA256 };
 
 /**
  * Computes the SHA-256 hash of arbitrary-length inputs padded up to any max length.
@@ -81,36 +81,3 @@ function partialSHA256(
 
   return digest;
 }
-
-// uses 'selectSubarray' function
-function dynamicSHA2562(
-  paddedPreimage: Bytes,
-  preimageBlockLength: Field,
-  initialHashValue = SHA256.initialState
-) {
-  // console.log('headers byte size: ', paddedPreimage.length);
-
-  const messageBlocks = toMessageBlocks(paddedPreimage);
-  let hashValues: UInt32[][] = Array.from(
-    { length: messageBlocks.length + 1 },
-    () => []
-  );
-  hashValues[0] = [...initialHashValue];
-
-  for (let i = 0; i < messageBlocks.length; i++) {
-    const messageSchedule = SHA256.createMessageSchedule(messageBlocks[i]);
-    hashValues[i + 1] = [...SHA256.compression(hashValues[i], messageSchedule)];
-  }
-
-  const correctBlockIndex = preimageBlockLength.mul(8);
-  const blocks = hashValues.flat();
-  let exactHashWords = selectSubarray(blocks, correctBlockIndex, 8);
-  const dynamicDigest = Bytes.from(
-    exactHashWords.map((x) => wordToBytes(x.value, 4).reverse()).flat()
-  );
-
-  return dynamicDigest;
-}
-
-//TODO Benchmark the one using select subarray and the one that isn't
-//TODO Integrate assert Zero padding inside the dynamic hashing and other checks
