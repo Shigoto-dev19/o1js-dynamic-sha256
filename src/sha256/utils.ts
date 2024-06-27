@@ -1,6 +1,6 @@
-import { Field, UInt8, Provable, assert } from 'o1js';
+import { Field, UInt8, Provable, assert, UInt32 } from 'o1js';
 
-export { chunk, bitSlice, bytesToWord, wordToBytes, mod, TupleN };
+export { chunk, bitSlice, bytesToWord, wordToBytes, bytesToWords, mod, TupleN };
 
 function chunk<T>(array: T[], size: number): T[][] {
   assert(array.length % size === 0, 'invalid input length');
@@ -45,6 +45,16 @@ function wordToBytes(
   bytesToWord(bytes, reverseEndianness).assertEquals(word);
 
   return bytes;
+}
+
+/**
+ * Convert an array of UInt8 to an array of Field elements. Expects little endian representation.
+ * @param bytesPerWord number of bytes per word
+ */
+function bytesToWords(bytes: UInt8[], bytesPerWord = 8): UInt32[] {
+  return chunk(bytes, bytesPerWord).map((bytes) =>
+    UInt32.Unsafe.fromField(bytesToWord(bytes, true))
+  );
 }
 
 function mod(x: bigint, p: bigint) {
