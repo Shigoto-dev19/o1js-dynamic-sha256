@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { Bytes, Field, Gadgets } from 'o1js';
 import { dynamicSha256, partialSHA256 } from './dynamic-sha256.js';
-import { dynamicSha256Pad, generatePartialShaInputs } from './helpers.js';
+import { dynamicSHA256Pad, generatePartialSHA256Inputs } from './helpers.js';
 import { generateEmailVerifierInputs } from '@zk-email/helpers';
 import {
   verifyDKIMSignature,
@@ -64,7 +64,7 @@ describe('Testing Dynamic SHA-256', () => {
     const blockSize = getPaddedLength(inputBytes.length);
 
     // Generate inputs for dynamic SHA-256
-    const [paddedPreimage, preimageLength] = dynamicSha256Pad(
+    const [paddedPreimage, preimageLength] = dynamicSHA256Pad(
       inputBytes,
       paddingSize ?? blockSize
     );
@@ -160,7 +160,7 @@ describe('Testing Partial SHA-256', () => {
    *
    * @param selector - The selector string to append to the random string.
    * @param precomputedDigest - The precomputed digest to use for the partial hash.
-   * @param hashValueIndex - The index to use for the dynamic hash of the remaining bytes.
+   * @param digestIndex - The index to use for the dynamic hash of the remaining bytes.
    * @param falseSelector - An optional false selector string to use instead of the correct selector.
    */
   function testPartialSHA256(
@@ -178,8 +178,8 @@ describe('Testing Partial SHA-256', () => {
     const preimageBytes = Bytes.fromString(randomString);
 
     // Generate partial SHA-256 inputs
-    const { precomputedHash, messageRemainingBytes, messageRemainingLength } =
-      generatePartialShaInputs(
+    const { precomputedHash, messageRemainingBytes, outputHashIndex } =
+      generatePartialSHA256Inputs(
         preimageBytes.toBytes(),
         1536,
         falseSelector ?? selector
@@ -189,7 +189,7 @@ describe('Testing Partial SHA-256', () => {
     const computedPartialHash = partialSHA256(
       precomputedDigest ?? precomputedHash,
       messageRemainingBytes,
-      digestIndex ?? messageRemainingLength
+      digestIndex ?? outputHashIndex
     ).toHex();
 
     // Compute the full SHA-256 hash for comparison
@@ -209,7 +209,7 @@ describe('Testing Partial SHA-256', () => {
 
   it('should hash the partial preimage correctly with random selectors (10 iterations)', () => {
     for (let i = 0; i < 10; i++) {
-      const selector = generateRandomString(100);
+      const selector = generateRandomString(50);
       testPartialSHA256(selector);
     }
   });
@@ -240,7 +240,7 @@ describe('Testing Dynamic & Partial SHA-256 on Email Verification', () => {
   let dkimParams: DKIMVerificationResult;
   let emailInputs: Awaited<ReturnType<typeof generateEmailVerifierInputs>>;
   let header: Bytes;
-  let headerDigest: string;
+  let headerHash: string;
   let body: Bytes;
   let bodyHash: string;
 
@@ -252,22 +252,22 @@ describe('Testing Dynamic & Partial SHA-256 on Email Verification', () => {
       shaPrecomputeSelector: 'thousands',
     });
     header = Bytes.from(dkimParams.headers);
-    headerDigest = Gadgets.SHA256.hash(header).toHex();
+    headerHash = Gadgets.SHA256.hash(header).toHex();
     body = Bytes.from(dkimParams.body);
     bodyHash = Buffer.from(dkimParams.bodyHash, 'base64').toString('hex');
   });
 
   it('should generate the same dynamic hash for headers with 1024 bytes padding (DKIM)', () => {
-    const [paddedHeader, headerHashIndex] = dynamicSha256Pad(
+    const [paddedHeader, headerHashIndex] = dynamicSHA256Pad(
       header.toBytes(),
       1024
     );
-    const headerDynamicDigest = dynamicSha256(
+    const headerDynamicHash = dynamicSha256(
       paddedHeader,
       headerHashIndex
     ).toHex();
 
-    expect(headerDynamicDigest).toBe(headerDigest);
+    expect(headerDynamicHash).toBe(headerHash);
   });
 
   it('should generate the same dynamic hash for headers (Circuit Inputs)', () => {
@@ -275,21 +275,33 @@ describe('Testing Dynamic & Partial SHA-256 on Email Verification', () => {
     const headerHashIndex = Field(
       Number(emailInputs.emailHeaderLength) / 8 - 8
     );
-    const headersDynamicDigest = dynamicSha256(
+    const headerDynamicHash = dynamicSha256(
       paddedHeader,
       headerHashIndex
     ).toHex();
 
-    expect(headersDynamicDigest).toBe(headerDigest);
+    expect(headerDynamicHash).toBe(headerHash);
   });
 
-  it('should generate the same partial hash for body with 1536 bytes padding (DKIM)', () => {
-    const { precomputedHash, messageRemainingBytes, messageRemainingLength } =
-      generatePartialShaInputs(body.toBytes(), 1536, 'thousands');
+  it('should generate the same partial hash for body with 1536 bytes padding (DKIM:selector=thousands)', () => {
+    const { precomputedHash, messageRemainingBytes, outputHashIndex } =
+      generatePartialSHA256Inputs(body.toBytes(), 1536, 'thousands');
     const computedPartialBodyHash = partialSHA256(
       precomputedHash,
       messageRemainingBytes,
-      messageRemainingLength
+      outputHashIndex
+    ).toHex();
+
+    expect(computedPartialBodyHash).toBe(bodyHash);
+  });
+
+  it('should generate the same partial hash for body with 2048 bytes padding (DKIM:selector=Bitcoin)', () => {
+    const { precomputedHash, messageRemainingBytes, outputHashIndex } =
+      generatePartialSHA256Inputs(body.toBytes(), 2048, 'Bitcoin');
+    const computedPartialBodyHash = partialSHA256(
+      precomputedHash,
+      messageRemainingBytes,
+      outputHashIndex
     ).toHex();
 
     expect(computedPartialBodyHash).toBe(bodyHash);
