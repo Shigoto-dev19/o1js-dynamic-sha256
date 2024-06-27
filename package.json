@@ -1,6 +1,6 @@
 {
-  "name": "o1js-dynamic-sha256",
-  "version": "0.1.0",
+  "name": "dynamic-sha256",
+  "version": "0.1.1",
   "description": "",
   "author": "",
   "license": "Apache-2.0",
