@@ -1,13 +1,16 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { SHA256 } from './sha256/sha256.js';
-import { bytesToWords, wordToBytes } from './sha256/utils.js';
-import { Bytes, Field, UInt32 } from 'o1js';
-import { toMessageBlocks, wordAtIndex } from './utils.js';
+import { Bytes, Field, UInt32, Gadgets } from 'o1js';
+import {
+  splitIntoMessageBlocks,
+  wordAtIndex,
+  bytesToWords,
+  wordToBytes,
+} from './utils.js';
 
 export { dynamicSHA256, partialSHA256 };
 
 /**
- * Computes the SHA-256 hash of arbitrary-length inputs padded up to any max length.
+ * Computes the SHA-256 hash of arbitrary-length input padded up to any max length.
  *
  * @param paddedPreimage - The padded preimage as Bytes.
  * @param digestIndex - The index of the first hash value of the preimage digest as Field.
@@ -17,10 +20,10 @@ export { dynamicSHA256, partialSHA256 };
 function dynamicSHA256(
   paddedPreimage: Bytes,
   digestIndex: Field,
-  initialHashValue = SHA256.initialState
+  initialHashValue = Gadgets.SHA256.initialState
 ): Bytes {
   // Split the padded preimage into 512-bit (64-byte) message blocks
-  const messageBlocks = toMessageBlocks(paddedPreimage);
+  const messageBlocks = splitIntoMessageBlocks(paddedPreimage);
 
   // Initialize hash values for each message block
   let hashValues: UInt32[][] = Array.from(
@@ -31,8 +34,12 @@ function dynamicSHA256(
 
   // Compute hash values for each message block
   for (let i = 0; i < messageBlocks.length; i++) {
-    const messageSchedule = SHA256.createMessageSchedule(messageBlocks[i]);
-    hashValues[i + 1] = [...SHA256.compression(hashValues[i], messageSchedule)];
+    const messageSchedule = Gadgets.SHA256.createMessageSchedule(
+      messageBlocks[i]
+    );
+    hashValues[i + 1] = [
+      ...Gadgets.SHA256.compression(hashValues[i], messageSchedule),
+    ];
   }
 
   // Flatten the hash values for easy access
