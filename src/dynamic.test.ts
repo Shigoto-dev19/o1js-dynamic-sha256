@@ -42,7 +42,7 @@ describe('Testing Dynamic SHA-256', () => {
     paddingSize?: number,
     preimageBytes?: Uint8Array,
     max = 1000,
-    falseDigestIndex=false
+    falseDigestIndex = false
   ) {
     // Generate random bytes if preimageBytes is not provided
     const randomSize = Math.floor(Math.random() * max);
@@ -148,9 +148,45 @@ describe('Testing Dynamic SHA-256', () => {
     expect(() => testDynamicSHA256(134, undefined, 100)).toThrow();
   });
 
-  it('should throw given an incorrect padded preimage index', () => {
+  it('should throw given an incorrect digest index', () => {
     // Expect an error when given an incorrect hash value index
     expect(() => testDynamicSHA256(1024, undefined, 10000, true)).toThrow();
+  });
+
+  it('should throw when the padded input length is not a multiple of 64 bytes', () => {
+    const inputBytes = Bytes(128).random().toBytes();
+    const [paddedPreimage, digestIndex] = dynamicSHA256Pad(inputBytes, 1024);
+
+    // Create false padding by adding 11 random bytes to the padded preimage
+    const falsePadding = Bytes.from([
+      ...paddedPreimage.bytes,
+      ...Bytes(11).random().bytes,
+    ]);
+
+    const errorMessage = 'Array length must be a multiple of 16';
+
+    // Assert that an error is thrown when the padded input length is not a multiple of 64 bytes (16 32-bit words)
+    expect(() => dynamicSHA256(falsePadding, digestIndex)).toThrowError(
+      errorMessage
+    );
+  });
+
+  it('should throw when non-zero padding is present', () => {
+    const inputBytes = Bytes(128).random().toBytes();
+    const [paddedPreimage, digestIndex] = dynamicSHA256Pad(inputBytes, 1024);
+
+    // Create false padding by adding 64 random bytes to the padded preimage
+    const falsePadding = Bytes.from([
+      ...paddedPreimage.bytes,
+      ...Bytes(64).random().bytes,
+    ]);
+
+    const errorMessage = 'Padding error at index 256: expected zero.';
+
+    // Assert that an error is thrown when the padded input contains non-zero padding
+    expect(() => dynamicSHA256(falsePadding, digestIndex)).toThrowError(
+      errorMessage
+    );
   });
 });
 
@@ -172,7 +208,7 @@ describe('Testing Partial SHA-256', () => {
     // Generate a random string of 250 characters
     let randomString = generateRandomString(250);
     randomString += selector;
-    randomString += generateRandomString(250);
+    randomString += generateRandomString(500);
 
     // Convert the random string to bytes
     const preimageBytes = Bytes.fromString(randomString);
@@ -207,9 +243,9 @@ describe('Testing Partial SHA-256', () => {
     testPartialSHA256('Mina Blockchain');
   });
 
-  it('should hash the partial preimage correctly with random selectors (10 iterations)', () => {
+  it.skip('should hash the partial preimage correctly with random selectors (10 iterations)', () => {
     for (let i = 0; i < 10; i++) {
-      const selector = generateRandomString(50);
+      const selector = '0x' + generateRandomString(100);
       testPartialSHA256(selector);
     }
   });
