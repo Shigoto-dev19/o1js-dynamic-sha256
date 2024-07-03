@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { Bytes, Field, UInt32, Gadgets } from 'o1js';
 import {
-  splitIntoMessageBlocks,
+  assertZeroPadding,
+  generateMessageBlocks,
   wordAtIndex,
   bytesToWords,
   wordToBytes,
@@ -23,7 +24,10 @@ function dynamicSHA256(
   initialHashValue = Gadgets.SHA256.initialState
 ): Bytes {
   // Split the padded preimage into 512-bit (64-byte) message blocks
-  const messageBlocks = splitIntoMessageBlocks(paddedPreimage);
+  const messageBlocks = generateMessageBlocks(paddedPreimage);
+
+  // Assert correctness of preimage padding
+  assertZeroPadding(messageBlocks, digestIndex);
 
   // Initialize hash values for each message block
   let hashValues: UInt32[][] = Array.from(
@@ -43,20 +47,20 @@ function dynamicSHA256(
   }
 
   // Flatten the hash values for easy access
-  let flattenedHashValues = hashValues.flat();
+  let hashWords = hashValues.flat();
 
   // Extract the digest words based on the digest index
   let digestWords: UInt32[] = [];
   for (let i = 0; i <= 7; i++) {
-    digestWords.push(wordAtIndex(flattenedHashValues, digestIndex.add(i)));
+    digestWords.push(wordAtIndex(hashWords, digestIndex.add(i)));
   }
 
   // Convert the digest words to Bytes and reverse endianness
-  const dynamicDigest = Bytes.from(
+  const digest = Bytes.from(
     digestWords.map((x) => wordToBytes(x.value, 4, true)).flat()
   );
 
-  return dynamicDigest;
+  return digest;
 }
 
 /**
