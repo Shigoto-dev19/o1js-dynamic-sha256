@@ -148,7 +148,7 @@ describe('Testing Dynamic SHA-256', () => {
     expect(() => testDynamicSHA256(134, undefined, 100)).toThrow();
   });
 
-  it('should throw given an incorrect digest index', () => {
+  it('should throw when generating an incorrect digest index', () => {
     // Expect an error when given an incorrect hash value index
     expect(() => testDynamicSHA256(1024, undefined, 10000, true)).toThrow();
   });
@@ -185,6 +185,19 @@ describe('Testing Dynamic SHA-256', () => {
 
     // Assert that an error is thrown when the padded input contains non-zero padding
     expect(() => dynamicSHA256(falsePadding, digestIndex)).toThrowError(
+      errorMessage
+    );
+  });
+
+  it('should throw given a false digest index', () => {
+    const inputBytes = Bytes(128).random().toBytes();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const [paddedPreimage, _] = dynamicSHA256Pad(inputBytes, 1024);
+
+    const errorMessage = 'Padding error at index 47: expected zero.';
+
+    // Assert that an error is thrown when the padded input contains non-zero padding
+    expect(() => dynamicSHA256(paddedPreimage, Field(15))).toThrowError(
       errorMessage
     );
   });
