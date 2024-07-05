@@ -69,6 +69,6 @@ function generatePartialSHA256Inputs(
   return {
     precomputedHash: Bytes.from(precomputedSha!.map(Number)),
     messageRemainingBytes: Bytes.from(bodyRemaining),
-    outputHashIndex: Field(bodyRemainingLength / 8 - 8),
+    digestIndex: Field(bodyRemainingLength / 8 - 8),
   };
 }

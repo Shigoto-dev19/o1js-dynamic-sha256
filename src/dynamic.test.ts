@@ -215,7 +215,7 @@ describe('Testing Partial SHA-256', () => {
   function testPartialSHA256(
     selector?: string,
     precomputedDigest?: Bytes,
-    digestIndex?: Field,
+    outputHashIndex?: Field,
     falseSelector?: string
   ) {
     // Generate a random string of 250 characters
@@ -227,7 +227,7 @@ describe('Testing Partial SHA-256', () => {
     const preimageBytes = Bytes.fromString(randomString);
 
     // Generate partial SHA-256 inputs
-    const { precomputedHash, messageRemainingBytes, outputHashIndex } =
+    const { precomputedHash, messageRemainingBytes, digestIndex } =
       generatePartialSHA256Inputs(
         preimageBytes.toBytes(),
         1536,
@@ -238,7 +238,7 @@ describe('Testing Partial SHA-256', () => {
     const computedPartialHash = partialSHA256(
       precomputedDigest ?? precomputedHash,
       messageRemainingBytes,
-      digestIndex ?? outputHashIndex
+      outputHashIndex ?? digestIndex
     ).toHex();
 
     // Compute the full SHA-256 hash for comparison
@@ -333,24 +333,24 @@ describe('Testing Dynamic & Partial SHA-256 on Email Verification', () => {
   });
 
   it('should generate the same partial hash for body with 1536 bytes padding (DKIM:selector=thousands)', () => {
-    const { precomputedHash, messageRemainingBytes, outputHashIndex } =
+    const { precomputedHash, messageRemainingBytes, digestIndex } =
       generatePartialSHA256Inputs(body.toBytes(), 1536, 'thousands');
     const computedPartialBodyHash = partialSHA256(
       precomputedHash,
       messageRemainingBytes,
-      outputHashIndex
+      digestIndex
     ).toHex();
 
     expect(computedPartialBodyHash).toBe(bodyHash);
   });
 
   it('should generate the same partial hash for body with 2048 bytes padding (DKIM:selector=Bitcoin)', () => {
-    const { precomputedHash, messageRemainingBytes, outputHashIndex } =
+    const { precomputedHash, messageRemainingBytes, digestIndex } =
       generatePartialSHA256Inputs(body.toBytes(), 2048, 'Bitcoin');
     const computedPartialBodyHash = partialSHA256(
       precomputedHash,
       messageRemainingBytes,
-      outputHashIndex
+      digestIndex
     ).toHex();
 
     expect(computedPartialBodyHash).toBe(bodyHash);
